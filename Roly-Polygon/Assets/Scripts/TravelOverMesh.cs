@@ -5,6 +5,7 @@ public class TravelOverMesh : MonoBehaviour {
     PolygonInfo polygon;
     public LayerMask layerMask;
     MeshNavigation meshNavigation;
+    public float moveSpeed = 1f;
 
     private void Start() {
         meshNavigation = GetComponentInParent<MeshNavigation>();
@@ -17,6 +18,7 @@ public class TravelOverMesh : MonoBehaviour {
         if (Physics.Raycast(transform.position, rayDir, out RaycastHit hit, 1000f, layerMask)) {
             polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, hit.triangleIndex, transform.parent);
         }
+        GetComponent<Rigidbody>().velocity = UnityEngine.Random.onUnitSphere;
     }
     // Update is called once per frame
     void Update() {
@@ -39,14 +41,17 @@ public class TravelOverMesh : MonoBehaviour {
                             neighboringNormal,
                             polygon.normal)));
             }
-            Vector3 faceCenter = (polygon.points[0] + polygon.points[1] + polygon.points[2]) / 3f;
-            Func<Vector3, Vector3> meshToPlane = (point) => Vector3.ProjectOnPlane(Quaternion.FromToRotation(polygon.normal, Vector3.up) * (point - faceCenter), Vector3.up);
-            Func<Vector3, Vector3> planeToMesh = (point) => Quaternion.FromToRotation(Vector3.up, polygon.normal) * point + faceCenter;
             List<Vector3> planarPoints = new List<Vector3>();
             foreach (Vector3 p in unfoldedPoints) {
                 planarPoints.Add(meshToPlane(p));
             }
             transform.position = planeToMesh(meshToPlane(transform.position));
+            Vector3 vel = GetComponent<Rigidbody>().velocity;
+            Vector3 forward = Vector3.ProjectOnPlane(vel, polygon.normal).normalized;
+            Vector3 right = Vector3.Cross(forward, polygon.normal).normalized;
+            GetComponent<Rigidbody>().velocity = moveSpeed * Time.deltaTime * (forward + right * Input.GetAxisRaw("Horizontal")).normalized;
+
+
         }
     }
     void DrawTriangle(List<Vector3> corners) {
@@ -57,11 +62,17 @@ public class TravelOverMesh : MonoBehaviour {
             Gizmos.DrawLine(corners[i], corners[(i + 1) % 3]);
         }
     }
+    Vector3 meshToPlane(Vector3 point) {
+        Vector3 faceCenter = (polygon.points[0] + polygon.points[1] + polygon.points[2]) / 3f;
+        return Vector3.ProjectOnPlane(Quaternion.FromToRotation(polygon.normal, Vector3.up) * (point - faceCenter), Vector3.up);
+    }
+    Vector3 planeToMesh(Vector3 point) {
+        Vector3 faceCenter = (polygon.points[0] + polygon.points[1] + polygon.points[2]) / 3f;
+        return Quaternion.FromToRotation(Vector3.up, polygon.normal) * point + faceCenter;
+    }
     private void OnDrawGizmos() {
         Gizmos.color = Color.red;
-        foreach (Vector3 p in polygon.points) {
-            Gizmos.DrawSphere(p, 0.015f);
-        }
+        DrawTriangle(polygon.points);
         Gizmos.DrawLine(transform.position, transform.position + polygon.normal);
         foreach (List<Vector3> l in meshNavigation.getNeighboringFaces(polygon.triangleIndex)) {
             Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
@@ -76,16 +87,13 @@ public class TravelOverMesh : MonoBehaviour {
                             polygon.normal)));
             }
             Gizmos.color = Color.blue;
-            DrawTriangle(unfoldedPoints);
-            Vector3 faceCenter = (polygon.points[0] + polygon.points[1] + polygon.points[2]) / 3f;
-            Func<Vector3, Vector3> meshToPlane = (point) => Vector3.ProjectOnPlane(Quaternion.FromToRotation(polygon.normal, Vector3.up) * (point - faceCenter), Vector3.up);
-            Func<Vector3, Vector3> planeToMesh = (point) => Quaternion.FromToRotation(Vector3.up, polygon.normal) * point + faceCenter;
+            //DrawTriangle(unfoldedPoints);
             List<Vector3> planarPoints = new List<Vector3>();
             foreach (Vector3 p in unfoldedPoints) {
                 planarPoints.Add(meshToPlane(p));
             }
             Gizmos.color = Color.green;
-            DrawTriangle(planarPoints);
+            //DrawTriangle(planarPoints);
         }
     }
 }
