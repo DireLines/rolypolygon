@@ -8,6 +8,7 @@ public class TravelOverMesh : MonoBehaviour {
     public float moveSpeed = 1f;
 
     private void Start() {
+        transform.position = UnityEngine.Random.insideUnitSphere * 50f;
         meshNavigation = GetComponentInParent<MeshNavigation>();
 
         //get initial polygon
@@ -22,6 +23,7 @@ public class TravelOverMesh : MonoBehaviour {
     }
     // Update is called once per frame
     void Update() {
+        Vector3 lastPolygonNormal = polygon.normal;
         //get center of mass of parent object
         Vector3 centerOfMass = transform.parent.TransformPoint(transform.parent.GetComponent<Rigidbody>().centerOfMass);
         //find first face in parent's mesh hit by (center of mass - transform.position)
@@ -45,14 +47,11 @@ public class TravelOverMesh : MonoBehaviour {
             foreach (Vector3 p in unfoldedPoints) {
                 planarPoints.Add(meshToPlane(p));
             }
-            transform.position = planeToMesh(meshToPlane(transform.position));
-            Vector3 vel = GetComponent<Rigidbody>().velocity;
-            Vector3 forward = Vector3.ProjectOnPlane(vel, polygon.normal).normalized;
-            Vector3 right = Vector3.Cross(forward, polygon.normal).normalized;
-            GetComponent<Rigidbody>().velocity = moveSpeed * Time.deltaTime * (forward + right * Input.GetAxisRaw("Horizontal")).normalized;
-
-
         }
+        transform.position = planeToMesh(meshToPlane(transform.position)) + polygon.normal.normalized * 0.01f;
+        Vector3 vel = GetComponent<Rigidbody>().velocity;
+        Vector3 forward = (Quaternion.FromToRotation(lastPolygonNormal, polygon.normal) * vel).normalized;
+        GetComponent<Rigidbody>().velocity = moveSpeed * Time.deltaTime * forward;
     }
     void DrawTriangle(List<Vector3> corners) {
         foreach (Vector3 p in corners) {
