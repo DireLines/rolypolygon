@@ -14,18 +14,18 @@ public class MeshNavigation : MonoBehaviour {
         neighboringFaces = MeshTriangleNeighbors.GetNeighbors(mesh);
     }
 
-    List<int> getNeighboringFaceIndices(int triangleIndex) {
+    public List<int> getNeighboringFaceIndices(int triangleIndex) {
         int triangleStart = triangleIndex * 3;
         return new List<int> { neighboringFaces[triangleStart], neighboringFaces[triangleStart + 1], neighboringFaces[triangleStart + 2] };
     }
-    Vector3[] getTriangleVertices(int triangleIndex) {
+    public List<Vector3> getTriangleVertices(int triangleIndex) {
         int triangleStart = triangleIndex * 3;
         int[] tris = mesh.triangles;
         Vector3[] verts = mesh.vertices;
         Vector3[] corners = { verts[tris[triangleStart]], verts[tris[triangleStart + 1]], verts[tris[triangleStart + 2]] };
-        Vector3[] result = corners;
+        List<Vector3> result = new List<Vector3>();
         for (int i = 0; i < 3; i++) {
-            result[i] = transform.TransformPoint(corners[i]);
+            result.Add(transform.TransformPoint(corners[i]));
         }
         return result;
     }
@@ -33,7 +33,7 @@ public class MeshNavigation : MonoBehaviour {
         var result = new List<List<Vector3>>();
         var indices = getNeighboringFaceIndices(triangleIndex);
         for (int i = 0; i < 3; i++) {
-            result.Add(new List<Vector3>(getTriangleVertices(indices[i])));
+            result.Add(getTriangleVertices(indices[i]));
         }
         return result;
     }
