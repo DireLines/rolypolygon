@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 public class EdgeTransition {
-    public double position;//0.0 to 1.0, position along edge
-    public double angle;//angle as measured counterclockwise from the perpendicular into the polygon
-    public EdgeTransition(double position, double angle) {
+    public float position;//0.0 to 1.0, position along edge
+    public float angle;//angle as measured clockwise from the perpendicular into the polygon
+    public EdgeTransition(float position, float angle) {
         this.position = position;
         this.angle = angle;
     }
@@ -18,7 +18,7 @@ public class EdgeTransition {
         return new EdgeTransition(transition.position, 0);
     }
     public static EdgeTransition midpoint(EdgeTransition transition) {
-        return new EdgeTransition(0.5, transition.angle);
+        return new EdgeTransition(0.5f, transition.angle);
     }
     public static EdgeTransition random(EdgeTransition transition) {
         return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-90f, 90f));
@@ -54,37 +54,55 @@ public class TravelOverMesh : MonoBehaviour {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-
+        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.normal;
+        List<Vector2> polygonPoints2D = new List<Vector2>();
+        foreach (Vector3 p in polygon.points) {
+            polygonPoints2D.Add(meshToPlane(p));
+        }
         foreach (int neighbor in meshNavigation.getNeighboringFaceIndices(polygon.triangleIndex)) {
             List<Vector3> l = meshNavigation.getTriangleVertices(neighbor);
-            Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
             List<Vector3> commonPoints = PolygonMath.commonPoints(polygon.points, l);
-            Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
-            PolygonMath.rotateAround(
-                    planeToMesh(point),
-                    commonPoints[0],
-                    Quaternion.FromToRotation(
-                        polygon.normal,
-                        neighboringNormal));
             List<Vector2> edgePoints = new List<Vector2>();
             foreach (Vector3 p in commonPoints) {
                 edgePoints.Add(meshToPlane(p));
             }
             if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
+                if (PolygonMath.pointInTriangle(planePos, polygonPoints2D[0], polygonPoints2D[1], polygonPoints2D[2])) {
+                    break;
+                }
                 //find point of intersection
                 Vector2 intersection = PolygonMath.intersectionPoint(planePosLF, planePos, edgePoints[0], edgePoints[1]);
+                Vector2 perpendicular = Vector2.Perpendicular(edgePoints[1] - edgePoints[0]);
+                if (Vector2.Dot(planePosLF - intersection, perpendicular) < 0) {
+                    perpendicular = -perpendicular;
+                }
                 //find incident angle
+                float incidentAngle = Vector2.SignedAngle(perpendicular, planePosLF - intersection);
                 //find proportion between endpoints
-                //call game logic to find new proportion/angle in 2D
-                //find pos/vel on edge in 2D (angle rotated from perpendicular into new polygon)
-                //planePos = intersection point
-                //if heading into new polygon:
-                //  switch to new polygon
-                //  print("switching polygon");
-                //  polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
-                //  set real velocity = planeToNeighbor(vel in 2D).normalized * magnitude(current vel)
-                //else:
-                //  set real velocity = planeToMesh(vel in 2D).normalized * magnitude(current vel)
+                float proportion = 0.5f;//TODO
+                EdgeTransition transition = transitionLogic(new EdgeTransition(proportion, incidentAngle));
+                perpendicular = -perpendicular;
+                planePos = transition.position * edgePoints[0] + (1 - transition.position) * edgePoints[1];
+                Vector2 vel2D = Quaternion.Euler(0, 0, Mathf.Deg2Rad * transition.angle) * perpendicular;
+                Vector3 vel = GetComponent<Rigidbody>().velocity;
+                bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
+                if (switchingPolygon) {
+                    print("switching polygon");
+                    Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
+                    Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
+                    PolygonMath.rotateAround(
+                            planeToMesh(point),
+                            commonPoints[0],
+                            Quaternion.FromToRotation(
+                                polygon.normal,
+                                neighboringNormal));
+                    GetComponent<Rigidbody>().velocity = planeToNeighbor(vel2D).normalized * vel.magnitude;
+                    Vector3 pos3DBeforeSwitch = planeToMesh(planePos);
+                    polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
+                    planePos = meshToPlane(pos3DBeforeSwitch);
+                } else {
+                    GetComponent<Rigidbody>().velocity = planeToMesh(vel2D).normalized * vel.magnitude;
+                }
                 break;
             }
         }
@@ -115,47 +133,5 @@ public class TravelOverMesh : MonoBehaviour {
     }
     Vector3 addY(Vector2 point) {
         return new Vector3(point.x, 0f, point.y);
-    }
-    private void OnDrawGizmos() {
-        Vector2 planePosLF = meshToPlane(displayPoint1);
-        Vector2 planePos = meshToPlane(displayPoint2);
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(addY(planePosLF), addY(planePos));
-        DrawTriangle(polygon.points);
-        Gizmos.DrawLine(transform.position, transform.position + polygon.normal);
-        foreach (int neighbor in meshNavigation.getNeighboringFaceIndices(polygon.triangleIndex)) {
-            List<Vector3> l = meshNavigation.getTriangleVertices(neighbor);
-
-            Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
-            List<Vector3> commonPoints = PolygonMath.commonPoints(polygon.points, l);
-            List<Vector2> edgePoints = new List<Vector2>();
-            foreach (Vector3 p in commonPoints) {
-                edgePoints.Add(meshToPlane(p));
-            }
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(addY(edgePoints[0]), addY(edgePoints[1]));
-            List<Vector3> unfoldedPoints = new List<Vector3>();
-            foreach (Vector3 p in l) {
-                unfoldedPoints.Add(PolygonMath.rotateAround(
-                                       p,
-                                       commonPoints[0],
-                                       Quaternion.FromToRotation(
-                                           neighboringNormal,
-                                           polygon.normal)));
-            }
-            Gizmos.color = Color.blue;
-            // DrawTriangle(unfoldedPoints);
-            List<Vector3> planarPoints = new List<Vector3>();
-            foreach (Vector3 p in unfoldedPoints) {
-                planarPoints.Add(addY(meshToPlane(p)));
-            }
-            Gizmos.color = Color.green;
-            if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
-                Vector2 intersection = PolygonMath.intersectionPoint(planePosLF, planePos, edgePoints[0], edgePoints[1]);
-                Gizmos.DrawSphere(addY(intersection), 0.02f);
-                break;
-            }
-            // DrawTriangle(planarPoints);
-        }
     }
 }

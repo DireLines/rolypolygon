@@ -263,6 +263,7 @@ public class PolygonMath {
         };
         if (dxa == 0 && dxb == 0) {
             //parallel vertical lines - no single intersection point
+            Debug.Log("hit a weird case");
             return new Vector2(0, 0);
         }
         if (dxa == 0) {
@@ -278,9 +279,22 @@ public class PolygonMath {
         float mb = (b2.y - b1.y) / (b2.x - b1.x);
         if (ma == mb) {
             //lines are parallel - no single intersection point
+            Debug.Log("hit a weird case");
             return new Vector2(0, 0);
         }
         float intersectionX = (b1.y - a1.y + ma * a1.x - mb * b1.x) / (ma - mb);
         return new Vector2(intersectionX, formulaA(intersectionX));
+    }
+    //is p inside the triangle t1-t2-t3?
+    //https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+    public static bool pointInTriangle(Vector2 p, Vector2 t1, Vector2 t2, Vector2 t3) {
+        var s = (t1.x - t3.x) * (p.y - t3.y) - (t1.y - t3.y) * (p.x - t3.x);
+        var t = (t2.x - t1.x) * (p.y - t1.y) - (t2.y - t1.y) * (p.x - t1.x);
+
+        if ((s < 0) != (t < 0) && s != 0 && t != 0)
+            return false;
+
+        var d = (t3.x - t2.x) * (p.y - t2.y) - (t3.y - t2.y) * (p.x - t2.x);
+        return d == 0 || (d < 0) == (s + t <= 0);
     }
 }
