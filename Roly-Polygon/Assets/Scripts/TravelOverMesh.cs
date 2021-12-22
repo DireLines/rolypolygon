@@ -1,6 +1,30 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+public class EdgeTransition {
+    public double position;//0.0 to 1.0, position along edge
+    public double angle;//angle as measured counterclockwise from the perpendicular into the polygon
+    public EdgeTransition(double position, double angle) {
+        this.position = position;
+        this.angle = angle;
+    }
+    public static EdgeTransition passThrough(EdgeTransition transition) {
+        return transition;
+    }
+    public static EdgeTransition reflect(EdgeTransition transition) {
+        return new EdgeTransition(transition.position, -transition.angle);
+    }
+    public static EdgeTransition normal(EdgeTransition transition) {
+        return new EdgeTransition(transition.position, 0);
+    }
+    public static EdgeTransition midpoint(EdgeTransition transition) {
+        return new EdgeTransition(0.5, transition.angle);
+    }
+    public static EdgeTransition random(EdgeTransition transition) {
+        return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-90f, 90f));
+    }
+}
+
 public class TravelOverMesh : MonoBehaviour {
     PolygonInfo polygon;
     public LayerMask layerMask;
@@ -11,11 +35,6 @@ public class TravelOverMesh : MonoBehaviour {
     Vector3 displayPoint2;
 
     private void Start() {
-        //Vector2 a1 = new Vector2(10f, 0f);
-        //Vector2 a2 = new Vector2(0f, 10f);
-        //Vector2 b1 = new Vector2(0f, 0f);
-        //Vector2 b2 = new Vector2(10f, 10f);
-        //print(PolygonMath.lineSegmentsIntersect(a1, a2, b1, b2));
         meshNavigation = GetComponentInParent<MeshNavigation>();
 
         //get initial polygon
@@ -38,20 +57,38 @@ public class TravelOverMesh : MonoBehaviour {
 
         foreach (int neighbor in meshNavigation.getNeighboringFaceIndices(polygon.triangleIndex)) {
             List<Vector3> l = meshNavigation.getTriangleVertices(neighbor);
-            //Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
+            Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
             List<Vector3> commonPoints = PolygonMath.commonPoints(polygon.points, l);
+            Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
+            PolygonMath.rotateAround(
+                    planeToMesh(point),
+                    commonPoints[0],
+                    Quaternion.FromToRotation(
+                        polygon.normal,
+                        neighboringNormal));
             List<Vector2> edgePoints = new List<Vector2>();
             foreach (Vector3 p in commonPoints) {
                 edgePoints.Add(meshToPlane(p));
             }
             if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
-                //switch to new polygon
-                print("switching polygon");
-                polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
-                planePos = meshToPlane(transform.position);
+                //find point of intersection
+                Vector2 intersection = PolygonMath.intersectionPoint(planePosLF, planePos, edgePoints[0], edgePoints[1]);
+                //find incident angle
+                //find proportion between endpoints
+                //call game logic to find new proportion/angle in 2D
+                //find pos/vel on edge in 2D (angle rotated from perpendicular into new polygon)
+                //planePos = intersection point
+                //if heading into new polygon:
+                //  switch to new polygon
+                //  print("switching polygon");
+                //  polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
+                //  set real velocity = planeToNeighbor(vel in 2D).normalized * magnitude(current vel)
+                //else:
+                //  set real velocity = planeToMesh(vel in 2D).normalized * magnitude(current vel)
                 break;
             }
         }
+        //if here, we didn't cross an edge
         transform.position = planeToMesh(planePos);
         displayPoint1 = positionLF;
         positionLF = transform.position;
@@ -86,7 +123,9 @@ public class TravelOverMesh : MonoBehaviour {
         Gizmos.DrawLine(addY(planePosLF), addY(planePos));
         DrawTriangle(polygon.points);
         Gizmos.DrawLine(transform.position, transform.position + polygon.normal);
-        foreach (List<Vector3> l in meshNavigation.getNeighboringFaces(polygon.triangleIndex)) {
+        foreach (int neighbor in meshNavigation.getNeighboringFaceIndices(polygon.triangleIndex)) {
+            List<Vector3> l = meshNavigation.getTriangleVertices(neighbor);
+
             Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
             List<Vector3> commonPoints = PolygonMath.commonPoints(polygon.points, l);
             List<Vector2> edgePoints = new List<Vector2>();
@@ -111,6 +150,11 @@ public class TravelOverMesh : MonoBehaviour {
                 planarPoints.Add(addY(meshToPlane(p)));
             }
             Gizmos.color = Color.green;
+            if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
+                Vector2 intersection = PolygonMath.intersectionPoint(planePosLF, planePos, edgePoints[0], edgePoints[1]);
+                Gizmos.DrawSphere(addY(intersection), 0.02f);
+                break;
+            }
             // DrawTriangle(planarPoints);
         }
     }

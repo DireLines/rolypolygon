@@ -1,4 +1,5 @@
 using System.Collections;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 //https://answers.unity.com/questions/1615363/how-to-find-connecting-mesh-triangles.html
@@ -245,5 +246,41 @@ public class PolygonMath {
         if (o4 == 0 && onSegment(b1, a2, b2)) return true;
 
         return false; // Doesn't fall in any of the above cases
+    }
+
+    public static Vector2 intersectionPoint(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2) {
+        float dxa = a2.x - a1.x;
+        float dxb = b2.x - b1.x;
+        Func<float, float> formulaB = (x) =>
+        {
+            float m = (b2.y - b1.y) / (b2.x - b1.x);
+            return m * (x - b1.x) + b1.y;
+        };
+        Func<float, float> formulaA = (x) =>
+        {
+            float m = (a2.y - a1.y) / (a2.x - a1.x);
+            return m * (x - a1.x) + a1.y;
+        };
+        if (dxa == 0 && dxb == 0) {
+            //parallel vertical lines - no single intersection point
+            return new Vector2(0, 0);
+        }
+        if (dxa == 0) {
+            //a is vertical
+            return new Vector2(a1.x, formulaB(a1.x));
+        }
+        if (dxb == 0) {
+            //b is vertical
+            return new Vector2(b1.x, formulaA(b1.x));
+        }
+        //normal case
+        float ma = (a2.y - a1.y) / (a2.x - a1.x);
+        float mb = (b2.y - b1.y) / (b2.x - b1.x);
+        if (ma == mb) {
+            //lines are parallel - no single intersection point
+            return new Vector2(0, 0);
+        }
+        float intersectionX = (b1.y - a1.y + ma * a1.x - mb * b1.x) / (ma - mb);
+        return new Vector2(intersectionX, formulaA(intersectionX));
     }
 }
