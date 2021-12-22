@@ -76,13 +76,11 @@ public class TravelOverMesh : MonoBehaviour {
                 if (Vector2.Dot(planePosLF - intersection, perpendicular) < 0) {
                     perpendicular = -perpendicular;
                 }
-                //find incident angle
-                float incidentAngle = Vector2.SignedAngle(perpendicular, planePosLF - intersection);
-                //find proportion between endpoints
-                float proportion = 0.5f;//TODO
+                float incidentAngle = Mathf.Rad2Deg * Vector2.SignedAngle(perpendicular, planePosLF - intersection);
+                float proportion = (intersection - edgePoints[0]).magnitude / (edgePoints[1] - edgePoints[0]).magnitude;
                 EdgeTransition transition = transitionLogic(new EdgeTransition(proportion, incidentAngle));
                 perpendicular = -perpendicular;
-                planePos = transition.position * edgePoints[0] + (1 - transition.position) * edgePoints[1];
+                planePos = transition.position * edgePoints[1] + (1 - transition.position) * edgePoints[0];
                 Vector2 vel2D = Quaternion.Euler(0, 0, Mathf.Deg2Rad * transition.angle) * perpendicular;
                 Vector3 vel = GetComponent<Rigidbody>().velocity;
                 bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
