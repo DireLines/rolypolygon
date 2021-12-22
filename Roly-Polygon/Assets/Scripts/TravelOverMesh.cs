@@ -68,6 +68,7 @@ public class TravelOverMesh : MonoBehaviour {
             }
             if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
                 if (PolygonMath.pointInTriangle(planePos, polygonPoints2D[0], polygonPoints2D[1], polygonPoints2D[2])) {
+                    //likely a repeat intersection from last edge transition - ignore
                     break;
                 }
                 //find point of intersection
@@ -76,12 +77,12 @@ public class TravelOverMesh : MonoBehaviour {
                 if (Vector2.Dot(planePosLF - intersection, perpendicular) < 0) {
                     perpendicular = -perpendicular;
                 }
-                float incidentAngle = Mathf.Rad2Deg * Vector2.SignedAngle(perpendicular, planePosLF - intersection);
+                float incidentAngle = Vector2.SignedAngle(perpendicular, planePosLF - intersection);
                 float proportion = (intersection - edgePoints[0]).magnitude / (edgePoints[1] - edgePoints[0]).magnitude;
                 EdgeTransition transition = transitionLogic(new EdgeTransition(proportion, incidentAngle));
                 perpendicular = -perpendicular;
                 planePos = transition.position * edgePoints[1] + (1 - transition.position) * edgePoints[0];
-                Vector2 vel2D = Quaternion.Euler(0, 0, Mathf.Deg2Rad * transition.angle) * perpendicular;
+                Vector2 planeVel = Quaternion.Euler(0, 0, transition.angle) * perpendicular;
                 Vector3 vel = GetComponent<Rigidbody>().velocity;
                 bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
                 if (switchingPolygon) {
@@ -94,12 +95,13 @@ public class TravelOverMesh : MonoBehaviour {
                             Quaternion.FromToRotation(
                                 polygon.normal,
                                 neighboringNormal));
-                    GetComponent<Rigidbody>().velocity = planeToNeighbor(vel2D).normalized * vel.magnitude;
                     Vector3 pos3DBeforeSwitch = planeToMesh(planePos);
+                    GetComponent<Rigidbody>().velocity = (planeToNeighbor(planeVel + planePos) - pos3DBeforeSwitch).normalized * vel.magnitude;
                     polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
                     planePos = meshToPlane(pos3DBeforeSwitch);
                 } else {
-                    GetComponent<Rigidbody>().velocity = planeToMesh(vel2D).normalized * vel.magnitude;
+                    print("not switching polygon");
+                    GetComponent<Rigidbody>().velocity = planeToMesh(planeVel).normalized * vel.magnitude;
                 }
                 break;
             }
@@ -131,5 +133,9 @@ public class TravelOverMesh : MonoBehaviour {
     }
     Vector3 addY(Vector2 point) {
         return new Vector3(point.x, 0f, point.y);
+    }
+    private void OnDrawGizmos() {
+        Gizmos.DrawSphere(displayPoint1, 0.02f);
+        Gizmos.DrawSphere(displayPoint2, 0.02f);
     }
 }
