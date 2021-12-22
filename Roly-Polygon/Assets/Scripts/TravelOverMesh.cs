@@ -135,7 +135,7 @@ public class TravelOverMesh : MonoBehaviour {
         return new Vector3(point.x, 0f, point.y);
     }
     private void OnDrawGizmos() {
-        Gizmos.DrawSphere(displayPoint1, 0.02f);
-        Gizmos.DrawSphere(displayPoint2, 0.02f);
+        //Gizmos.DrawSphere(displayPoint1, 0.02f);
+        //Gizmos.DrawSphere(displayPoint2, 0.02f);
     }
 }
