@@ -8,6 +8,9 @@ using UnityEngine;
 public class MeshNavigation : MonoBehaviour {
     public List<int> neighboringFaces;
     public Mesh mesh;
+    private void Awake() {
+        Random.InitState(42);
+    }
     // Start is called before the first frame update
     void Start() {
         mesh = GetComponent<MeshFilter>().mesh;

@@ -21,12 +21,12 @@ public class EdgeTransition {
         return new EdgeTransition(0.5f, transition.angle);
     }
     public static EdgeTransition random(EdgeTransition transition) {
-        return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-90f, 90f));
+        return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-180f, 180f));
     }
 }
 
 public class TravelOverMesh : MonoBehaviour {
-    PolygonInfo polygon;
+    public PolygonInfo polygon;
     public LayerMask layerMask;
     MeshNavigation meshNavigation;
     public float moveSpeed = 1f;
@@ -47,14 +47,14 @@ public class TravelOverMesh : MonoBehaviour {
         }
         transform.position = planeToMesh(meshToPlane(transform.position));
         positionLF = transform.position;
-        GetComponent<Rigidbody>().velocity = UnityEngine.Random.onUnitSphere.normalized * Time.deltaTime * moveSpeed;
+        GetComponent<Rigidbody>().velocity = Vector3.up * Time.deltaTime * (moveSpeed + UnityEngine.Random.Range(-0.001f, 0.001f));
     }
     // Update is called once per frame
     void Update() {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.normal;
+        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.reflect;
         List<Vector2> polygonPoints2D = new List<Vector2>();
         foreach (Vector3 p in polygon.points) {
             polygonPoints2D.Add(meshToPlane(p));
@@ -86,7 +86,7 @@ public class TravelOverMesh : MonoBehaviour {
                 Vector3 vel = GetComponent<Rigidbody>().velocity;
                 bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
                 if (switchingPolygon) {
-                    print("switching polygon");
+                    print(gameObject.name + "switching polygon");
                     Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
                     Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
                     PolygonMath.rotateAround(
@@ -100,7 +100,7 @@ public class TravelOverMesh : MonoBehaviour {
                     polygon = new PolygonInfo(transform.parent.GetComponent<MeshFilter>().mesh, neighbor, transform.parent);
                     planePos = meshToPlane(pos3DBeforeSwitch);
                 } else {
-                    print("not switching polygon");
+                    //print("not switching polygon");
                     GetComponent<Rigidbody>().velocity = planeToMesh(planeVel).normalized * vel.magnitude;
                 }
                 break;
