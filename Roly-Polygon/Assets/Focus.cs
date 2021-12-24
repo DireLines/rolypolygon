@@ -14,5 +14,13 @@ public class Focus : MonoBehaviour {
     void Update() {
         transform.position = target.position + target.gameObject.GetComponent<TravelOverMesh>().polygon.normal * viewDist;
         transform.LookAt(target.position);
+        transform.rotation = Quaternion.FromToRotation(transform.up, target.GetComponent<Rigidbody>().velocity) * transform.rotation;
+    }
+    void OnPreRender() {
+        GL.wireframe = true;
+    }
+
+    void OnPostRender() {
+        GL.wireframe = false;
     }
 }

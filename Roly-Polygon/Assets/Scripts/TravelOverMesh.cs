@@ -34,6 +34,9 @@ public class TravelOverMesh : MonoBehaviour {
     Vector3 displayPoint1;
     Vector3 displayPoint2;
     int lastPolygonIndex;
+    private void OnPreRender() {
+        GL.wireframe = true;
+    }
 
     private void Start() {
         meshNavigation = GetComponentInParent<MeshNavigation>();
@@ -48,14 +51,14 @@ public class TravelOverMesh : MonoBehaviour {
         }
         transform.position = planeToMesh(meshToPlane(transform.position));
         positionLF = transform.position;
-        GetComponent<Rigidbody>().velocity = Vector3.right * Time.deltaTime * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
+        GetComponent<Rigidbody>().velocity = Vector3.up * Time.deltaTime * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
     }
     // Update is called once per frame
     void Update() {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.passThrough;
+        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.normal;
         List<Vector2> polygonPoints2D = new List<Vector2>();
         foreach (Vector3 p in polygon.points) {
             polygonPoints2D.Add(meshToPlane(p));
