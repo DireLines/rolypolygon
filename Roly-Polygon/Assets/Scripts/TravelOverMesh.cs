@@ -33,6 +33,7 @@ public class TravelOverMesh : MonoBehaviour {
     Vector3 positionLF;
     Vector3 displayPoint1;
     Vector3 displayPoint2;
+    int lastPolygonIndex;
 
     private void Start() {
         meshNavigation = GetComponentInParent<MeshNavigation>();
@@ -47,19 +48,23 @@ public class TravelOverMesh : MonoBehaviour {
         }
         transform.position = planeToMesh(meshToPlane(transform.position));
         positionLF = transform.position;
-        GetComponent<Rigidbody>().velocity = Vector3.up * Time.deltaTime * (moveSpeed + UnityEngine.Random.Range(-0.001f, 0.001f));
+        GetComponent<Rigidbody>().velocity = Vector3.right * Time.deltaTime * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
     }
     // Update is called once per frame
     void Update() {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.reflect;
+        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.passThrough;
         List<Vector2> polygonPoints2D = new List<Vector2>();
         foreach (Vector3 p in polygon.points) {
             polygonPoints2D.Add(meshToPlane(p));
         }
         foreach (int neighbor in meshNavigation.getNeighboringFaceIndices(polygon.triangleIndex)) {
+            if (neighbor == lastPolygonIndex) {
+                //likely a repeat intersection from last edge transition - ignore
+                continue;
+            }
             List<Vector3> l = meshNavigation.getTriangleVertices(neighbor);
             List<Vector3> commonPoints = PolygonMath.commonPoints(polygon.points, l);
             List<Vector2> edgePoints = new List<Vector2>();
@@ -67,10 +72,6 @@ public class TravelOverMesh : MonoBehaviour {
                 edgePoints.Add(meshToPlane(p));
             }
             if (PolygonMath.lineSegmentsIntersect(planePosLF, planePos, edgePoints[0], edgePoints[1])) {
-                if (PolygonMath.pointInTriangle(planePos, polygonPoints2D[0], polygonPoints2D[1], polygonPoints2D[2])) {
-                    //likely a repeat intersection from last edge transition - ignore
-                    break;
-                }
                 //find point of intersection
                 Vector2 intersection = PolygonMath.intersectionPoint(planePosLF, planePos, edgePoints[0], edgePoints[1]);
                 Vector2 perpendicular = Vector2.Perpendicular(edgePoints[1] - edgePoints[0]);
@@ -86,7 +87,8 @@ public class TravelOverMesh : MonoBehaviour {
                 Vector3 vel = GetComponent<Rigidbody>().velocity;
                 bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
                 if (switchingPolygon) {
-                    print(gameObject.name + "switching polygon");
+                    print(gameObject.name + "switching from polygon " + polygon.triangleIndex + " to polygon " + neighbor);
+                    lastPolygonIndex = polygon.triangleIndex;
                     Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
                     Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
                     PolygonMath.rotateAround(
