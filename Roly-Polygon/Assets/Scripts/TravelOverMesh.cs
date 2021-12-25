@@ -24,7 +24,11 @@ public class EdgeTransition {
         return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-180f, 180f));
     }
 }
-
+//redirect cannon
+//fences on edges
+//slow down/speed up faces
+//launchpad
+//reverse face
 public class TravelOverMesh : MonoBehaviour {
     public PolygonInfo polygon;
     public LayerMask layerMask;
@@ -51,14 +55,14 @@ public class TravelOverMesh : MonoBehaviour {
         }
         transform.position = planeToMesh(meshToPlane(transform.position));
         positionLF = transform.position;
-        GetComponent<Rigidbody>().velocity = Vector3.up * Time.deltaTime * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
+        GetComponent<Rigidbody>().velocity = Vector3.up * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
     }
     // Update is called once per frame
     void Update() {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.normal;
+        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.passThrough;
         List<Vector2> polygonPoints2D = new List<Vector2>();
         foreach (Vector3 p in polygon.points) {
             polygonPoints2D.Add(meshToPlane(p));
@@ -111,8 +115,8 @@ public class TravelOverMesh : MonoBehaviour {
                 break;
             }
         }
-        //if here, we didn't cross an edge
         transform.position = planeToMesh(planePos);
+        GetComponent<Rigidbody>().velocity = (GetComponent<Rigidbody>().velocity).normalized * moveSpeed;
         displayPoint1 = positionLF;
         positionLF = transform.position;
         displayPoint2 = transform.position;
