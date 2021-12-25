@@ -55,7 +55,8 @@ public class TravelOverMesh : MonoBehaviour {
         }
         transform.position = planeToMesh(meshToPlane(transform.position));
         positionLF = transform.position;
-        GetComponent<Rigidbody>().velocity = Vector3.up * (moveSpeed * UnityEngine.Random.Range(0.9999f, 1.00001f));
+        moveSpeed *= UnityEngine.Random.Range(0.9999f, 1.00001f);
+        GetComponent<Rigidbody>().velocity = Vector3.up * moveSpeed;
     }
     // Update is called once per frame
     void Update() {
@@ -94,7 +95,7 @@ public class TravelOverMesh : MonoBehaviour {
                 Vector3 vel = GetComponent<Rigidbody>().velocity;
                 bool switchingPolygon = transition.angle > -90f && transition.angle < 90f;
                 if (switchingPolygon) {
-                    print(gameObject.name + "switching from polygon " + polygon.triangleIndex + " to polygon " + neighbor);
+                    //print(gameObject.name + "switching from polygon " + polygon.triangleIndex + " to polygon " + neighbor);
                     lastPolygonIndex = polygon.triangleIndex;
                     Vector3 neighboringNormal = PolygonMath.getNormalFromPoints(l);
                     Func<Vector2, Vector3> planeToNeighbor = (point) => //align with main face, then hinge to align with neighbor
