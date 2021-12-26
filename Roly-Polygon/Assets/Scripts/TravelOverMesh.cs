@@ -38,6 +38,7 @@ public class TravelOverMesh : MonoBehaviour {
     Vector3 displayPoint1;
     Vector3 displayPoint2;
     int lastPolygonIndex;
+    bool transitionedLastFrame;
     private void OnPreRender() {
         GL.wireframe = true;
     }
@@ -58,8 +59,7 @@ public class TravelOverMesh : MonoBehaviour {
         moveSpeed *= UnityEngine.Random.Range(0.9999f, 1.00001f);
         GetComponent<Rigidbody>().velocity = Vector3.up * moveSpeed;
     }
-    // Update is called once per frame
-    void Update() {
+    void FixedUpdate() {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
@@ -117,7 +117,7 @@ public class TravelOverMesh : MonoBehaviour {
             }
         }
         transform.position = planeToMesh(planePos);
-        GetComponent<Rigidbody>().velocity = (GetComponent<Rigidbody>().velocity).normalized * moveSpeed;
+        GetComponent<Rigidbody>().velocity = GetComponent<Rigidbody>().velocity.normalized * moveSpeed;
         displayPoint1 = positionLF;
         positionLF = transform.position;
         displayPoint2 = transform.position;
@@ -145,6 +145,10 @@ public class TravelOverMesh : MonoBehaviour {
         return new Vector3(point.x, 0f, point.y);
     }
     private void OnDrawGizmos() {
+        Gizmos.color = Color.white;
+        Gizmos.DrawLine(transform.position, transform.position + polygon.normal);
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, transform.position + GetComponent<Rigidbody>().velocity * 2f);
         //Gizmos.DrawSphere(displayPoint1, 0.02f);
         //Gizmos.DrawSphere(displayPoint2, 0.02f);
     }
