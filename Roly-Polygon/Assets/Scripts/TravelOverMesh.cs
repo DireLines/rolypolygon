@@ -1,34 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-public class EdgeTransition {
-    public float position;//0.0 to 1.0, position along edge
-    public float angle;//angle as measured clockwise from the perpendicular into the polygon
-    public EdgeTransition(float position, float angle) {
-        this.position = position;
-        this.angle = angle;
-    }
-    public static EdgeTransition passThrough(EdgeTransition transition) {
-        return transition;
-    }
-    public static EdgeTransition reflect(EdgeTransition transition) {
-        return new EdgeTransition(transition.position, -transition.angle);
-    }
-    public static EdgeTransition normal(EdgeTransition transition) {
-        return new EdgeTransition(transition.position, 0);
-    }
-    public static EdgeTransition midpoint(EdgeTransition transition) {
-        return new EdgeTransition(0.5f, transition.angle);
-    }
-    public static EdgeTransition random(EdgeTransition transition) {
-        return new EdgeTransition(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(-180f, 180f));
-    }
-}
+
 //redirect cannon
 //fences on edges
 //slow down/speed up faces
 //launchpad
 //reverse face
+[RequireComponent(typeof(Creature))]
 public class TravelOverMesh : MonoBehaviour {
     public PolygonInfo polygon;
     public LayerMask layerMask;
@@ -39,12 +18,15 @@ public class TravelOverMesh : MonoBehaviour {
     Vector3 displayPoint2;
     int lastPolygonIndex;
     bool transitionedLastFrame;
+    Func<EdgeTransitionInfo, EdgeTransitionHeading> transitionLogic;
+
     private void OnPreRender() {
         GL.wireframe = true;
     }
 
     private void Start() {
         meshNavigation = GetComponentInParent<MeshNavigation>();
+        transitionLogic = GetComponent<Creature>().edgeTransitionRule.rule;
 
         //get initial polygon
         //get center of mass of parent object
@@ -63,7 +45,6 @@ public class TravelOverMesh : MonoBehaviour {
         Vector3 lastPolygonNormal = polygon.normal;
         Vector2 planePosLF = meshToPlane(positionLF);
         Vector2 planePos = meshToPlane(transform.position);
-        Func<EdgeTransition, EdgeTransition> transitionLogic = EdgeTransition.passThrough;
         List<Vector2> polygonPoints2D = new List<Vector2>();
         foreach (Vector3 p in polygon.points) {
             polygonPoints2D.Add(meshToPlane(p));
@@ -88,7 +69,7 @@ public class TravelOverMesh : MonoBehaviour {
                 }
                 float incidentAngle = Vector2.SignedAngle(perpendicular, planePosLF - intersection);
                 float proportion = (intersection - edgePoints[0]).magnitude / (edgePoints[1] - edgePoints[0]).magnitude;
-                EdgeTransition transition = transitionLogic(new EdgeTransition(proportion, incidentAngle));
+                EdgeTransitionHeading transition = transitionLogic(new EdgeTransitionInfo(proportion, incidentAngle, 0f));
                 perpendicular = -perpendicular;
                 planePos = transition.position * edgePoints[1] + (1 - transition.position) * edgePoints[0];
                 Vector2 planeVel = Quaternion.Euler(0, 0, transition.angle) * perpendicular;
